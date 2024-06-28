@@ -26,6 +26,7 @@ const BarChart = ({ data }) => {
         }],
       },
       options: {
+        maintainAspectRatio: false,
         scales: {
           y: {
             beginAtZero: true,
@@ -39,7 +40,7 @@ const BarChart = ({ data }) => {
     };
   }, [data]);
 
-  return <canvas ref={chartRef}></canvas>;
+  return <canvas ref={chartRef} className="w-full h-full"></canvas>;
 };
 
 export default BarChart;
