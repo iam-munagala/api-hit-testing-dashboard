@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 from database import db
 from models import ApiHit, ApiLog
-import datetime
+from datetime import datetime, timedelta
 
 # Load environment variables from .env
 load_dotenv()
@@ -33,7 +33,7 @@ def log_audit(operation, endpoint, request_type, user_agent, request_body, respo
         user_agent=user_agent,
         request_body=request_body,
         response_status=response_status,
-        timestamp=datetime.datetime.utcnow()
+        timestamp=datetime.utcnow()
     )
     db.session.add(log)
     db.session.commit()
@@ -51,7 +51,7 @@ def log_api_hit():
             endpoint=request.path,
             user_agent=user_agent,
             request_body=str(request_body),  # Convert to string if JSON data exists
-            timestamp=datetime.datetime.utcnow()
+            timestamp=datetime.utcnow()
         )
         db.session.add(new_hit)
         db.session.commit()
@@ -70,21 +70,18 @@ def get_stats():
         "tableData": []
     }
 
+    # Dictionary to store daily hit counts for the current year
+    daily_hits = {}
+
+    # Get the current year
+    current_year = datetime.now().year
+
     for hit in hits:
         # Collecting pie chart data
         if hit.user_agent in data["pieChartData"]:
             data["pieChartData"][hit.user_agent] += 1
         else:
             data["pieChartData"][hit.user_agent] = 1
-
-        # Collecting bar chart data
-        date_str = hit.timestamp.strftime('%Y-%m-%d')
-        if date_str in data["barChartData"]["labels"]:
-            idx = data["barChartData"]["labels"].index(date_str)
-            data["barChartData"]["values"][idx] += 1
-        else:
-            data["barChartData"]["labels"].append(date_str)
-            data["barChartData"]["values"].append(1)
 
         # Collecting table data
         data["tableData"].append({
@@ -95,6 +92,20 @@ def get_stats():
             "request_body": hit.request_body,
             "timestamp": hit.timestamp.strftime('%Y-%m-%d %H:%M:%S')
         })
+
+        # Aggregating daily hit counts for the current year only
+        if hit.timestamp.year == current_year:
+            day_str = hit.timestamp.strftime('%Y-%m-%d')
+
+            if day_str in daily_hits:
+                daily_hits[day_str] += 1
+            else:
+                daily_hits[day_str] = 1
+
+    # Convert daily_hits dictionary to the format needed for barChartData
+    for day_str, count in daily_hits.items():
+        data["barChartData"]["labels"].append(day_str)
+        data["barChartData"]["values"].append(count)
 
     return jsonify(data)
 
@@ -112,7 +123,7 @@ def create_hit():
         endpoint=data.get('endpoint'),
         user_agent=user_agent,
         request_body=data.get('request_body', None),
-        timestamp=datetime.datetime.utcnow()
+        timestamp=datetime.utcnow()
     )
     try:
         db.session.add(new_hit)
